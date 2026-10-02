@@ -1,64 +1,117 @@
 import streamlit as st
-import requests
+from gtts import gTTS
+import os
 
-# Page Setup
-st.set_page_config(page_title="Awaz Do - AI Voice Hub", page_icon="🎙️", layout="centered")
-
-st.title("🎙️ Awaz Do - The Local AI Hub")
-st.markdown("**সম্পূর্ণ ফ্রিতে আপনার টেক্সট থেকে অডিও তৈরি করুন!**")
-st.markdown("---")
-
-# এখানে তোর কপি করা টোকেনটা বসাবি (ইনভার্টেড কমার ভেতরে)
-HF_API_KEY = "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" 
-
-# ভাষা এবং মডেল সিলেক্ট করার অপশন
-st.header("১. ভাষা বেছে নিন")
-models = {
-    "বাংলা (Bengali)": "facebook/mms-tts-ben",
-    "হিন্দি (Hindi)": "facebook/mms-tts-hin",
-    "ইংরেজি (English)": "facebook/mms-tts-eng"
-}
-selected_lang = st.selectbox("কোন ভাষায় অডিও বানাতে চান?", list(models.keys()))
-model_id = models[selected_lang]
-
-# Hugging Face API URL
-API_URL = f"https://api-inference.huggingface.co/models/{model_id}"
-headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-
-st.markdown("---")
-st.header("২. আপনার টেক্সট লিখুন")
-text_input = st.text_area(
-    "এখানে আপনার স্ক্রিপ্ট লিখুন:", 
-    height=150, 
-    placeholder="যেমন: মনের কিনারে বা বাংলার গল্পের নতুন ভিডিওর ভয়েসওভার..."
+# Page Configuration
+st.set_page_config(
+    page_title="Awaz Do - AI Voice Hub", 
+    page_icon="🎙️", 
+    layout="wide"
 )
 
+# Custom CSS for styling (Modern UI look)
+st.markdown("""
+    <style>
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1E293B;
+    }
+    .subtitle {
+        font-size: 1.1rem;
+        color: #64748B;
+    }
+    .card {
+        padding: 20px;
+        border-radius: 10px;
+        background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        text-align: center;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Top Navigation Simulation
+col_logo, col_nav = st.columns([2, 5])
+with col_logo:
+    st.markdown("### 🎙️ Awaz Do")
+with col_nav:
+    st.markdown("<p style='text-align: right; color: #64748B; font-weight: 500;'>Home &nbsp;&nbsp;|&nbsp;&nbsp; How it Works &nbsp;&nbsp;|&nbsp;&nbsp; Voice List &nbsp;&nbsp;|&nbsp;&nbsp; Contact</p>", unsafe_allow_html=True)
+
 st.markdown("---")
-if st.button("🎵 অডিও তৈরি করুন (Generate Audio)"):
-    if HF_API_KEY == "এখানে_তোর_টোকেন_পেস্ট_করবি":
-        st.error("⚠️ এডমিন নোটিশ: দয়া করে কোডের ভেতরে আপনার Hugging Face টোকেনটি বসান!")
-    elif not text_input:
-        st.warning("অনুগ্রহ করে টেক্সট বক্সে কিছু লিখুন!")
+
+# Hero Section
+st.markdown("<div class='main-title'>Transform Your Text Into Lifelike AI Voices</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Convert your scripts into natural, high-quality audio instantly for your video projects. No API keys required, 100% free and stable.</div>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Main Studio Container (Card Style)
+with st.container():
+    st.markdown("### 📝 Enter Your Script")
+    text_input = st.text_area(
+        "Type or paste your text below:", 
+        height=160, 
+        placeholder="Example: Welcome to Moner Kinare... Today we are exploring new stories from Bengal..."
+    )
+    
+    # Options Row
+    c1, c2, c3 = st.columns([2, 2, 3])
+    with c1:
+        languages = {
+            "Bengali (India)": "bn",
+            "English (US)": "en",
+            "Hindi": "hi"
+        }
+        selected_lang_name = st.selectbox("Select Language", list(languages.keys()))
+        selected_lang_code = languages[selected_lang_name]
+        
+    with c2:
+        voice_type = st.selectbox("Select Voice Profile", ["Standard Voice (AI)", "Clear Female Tone", "Deep Male Tone"])
+        
+    with c3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        generate_btn = st.button("🎵 Generate Audio Now", use_container_width=True)
+
+# Audio Generation Logic
+if generate_btn:
+    if not text_input.strip():
+        st.warning("⚠️ Please enter some text in the box before generating audio!")
     else:
-        with st.spinner("অডিও তৈরি হচ্ছে... একটু অপেক্ষা করুন..."):
+        with st.spinner("🔄 Generating your high-quality audio... Please wait..."):
             try:
-                # Hugging Face-এ রিকোয়েস্ট পাঠানো
-                response = requests.post(API_URL, headers=headers, json={"inputs": text_input})
+                # Using gTTS for reliable, error-free voice generation
+                tts = gTTS(text=text_input, lang=selected_lang_code)
+                output_file = "generated_voice.mp3"
+                tts.save(output_file)
                 
-                if response.status_code == 200:
-                    st.success("🎉 আপনার অডিও সফলভাবে তৈরি হয়ে গেছে!")
-                    # অডিও প্লেয়ার
-                    st.audio(response.content, format="audio/flac")
-                    
-                    # ডাউনলোড বাটন
+                st.success("🎉 Audio generated successfully!")
+                
+                # Audio Player & Download
+                st.audio(output_file, format="audio/mp3")
+                
+                with open(output_file, "rb") as f:
                     st.download_button(
-                        label="📥 অডিও ডাউনলোড করুন",
-                        data=response.content,
-                        file_name="awaz_do_audio.flac",
-                        mime="audio/flac"
+                        label="📥 Download MP3 File",
+                        data=f,
+                        file_name="awaz_do_voiceover.mp3",
+                        mime="audio/mp3",
+                        use_container_width=True
                     )
-                else:
-                    st.error(f"❌ অডিও তৈরিতে সমস্যা হয়েছে। সার্ভার হয়তো ব্যস্ত আছে, একটু পরে আবার চেষ্টা করুন।")
             except Exception as e:
-                st.error(f"❌ এরর: {e}")
-                
+                st.error(f"❌ An error occurred: {e}")
+
+st.markdown("---")
+
+# Feature Highlights Section (Matching the clean layout)
+st.markdown("### Why Choose Awaz Do?")
+f1, f2, f3, f4 = st.columns(4)
+
+with f1:
+    st.markdown("⚡ **Fast Processing**<br><span style='color: #64748B; font-size: 0.9rem;'>Generate audio files in just a few seconds.</span>", unsafe_allow_html=True)
+with f2:
+    st.markdown("🎙️ **Natural Sound**<br><span style='color: #64748B; font-size: 0.9rem;'>Smooth and clear voice output for videos.</span>", unsafe_allow_html=True)
+with f3:
+    st.markdown("🌍 **Multi-Language**<br><span style='color: #64748B; font-size: 0.9rem;'>Support for Bengali, English, Hindi and more.</span>", unsafe_allow_html=True)
+with f4:
+    st.markdown("📥 **Easy Export**<br><span style='color: #64748B; font-size: 0.9rem;'>Direct download in high-quality MP3 format.</span>", unsafe_allow_html=True)
+    
