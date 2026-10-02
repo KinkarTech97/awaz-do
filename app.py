@@ -1,42 +1,76 @@
-from elevenlabs.client import ElevenLabs
-from elevenlabs import save
-from google.cloud import texttospeech
+import asyncio
+import edge_tts
 import os
 
-# ================== কনফিগ ==================
-ELEVENLABS_API_KEY = "YOUR_ELEVENLABS_API_KEY"
-GOOGLE_CREDENTIALS = "path/to/your-service-account.json"
+# ====================== ভয়েস লিস্ট ======================
+VOICES = {
+    "1": {"name": "বাংলা - সাদিয়া (মহিলা)", "id": "bn-BD-NabanitaNeural"},
+    "2": {"name": "বাংলা - প্রদীপ (পুরুষ)", "id": "bn-BD-PradeepNeural"},
+    "3": {"name": "বাংলা - তানিশা (মহিলা - ভারত)", "id": "bn-IN-TanishaaNeural"},
+    "4": {"name": "বাংলা - ভাস্কর (পুরুষ - ভারত)", "id": "bn-IN-BashkarNeural"},
+    "5": {"name": "হিন্দি - স্বরা (মহিলা)", "id": "hi-IN-SwaraNeural"},
+    "6": {"name": "হিন্দি - মধুর (পুরুষ)", "id": "hi-IN-MadhurNeural"},
+    "7": {"name": "ইংরেজি - জেনি (মহিলা)", "id": "en-US-JennyNeural"},
+    "8": {"name": "ইংরেজি - গাই (পুরুষ)", "id": "en-US-GuyNeural"},
+    "9": {"name": "ইংরেজি - আরিয়া (মহিলা)", "id": "en-US-AriaNeural"},
+    "10": {"name": "ইংরেজি - নীর্জা (মহিলা - ভারত)", "id": "en-IN-NeerjaNeural"},
+    "11": {"name": "ইংরেজি - প্রভাত (পুরুষ - ভারত)", "id": "en-IN-PrabhatNeural"},
+}
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_CREDENTIALS
-# ===========================================
+async def generate_voice():
+    print("\n" + "="*50)
+    print("       Best Free Natural TTS (No API Key)")
+    print("="*50)
 
-def elevenlabs_tts(text, voice_id="JBFqnCBsd6RMkjVDRZzb", output="elevenlabs.mp3"):
-    client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-    audio = client.text_to_speech.convert(
-        text=text,
-        voice_id=voice_id,
-        model_id="eleven_multilingual_v2",
-        output_format="mp3_44100_128"
-    )
-    save(audio, output)
-    print(f"ElevenLabs → {output}")
+    # টেক্সট ইনপুট
+    print("\nতোমার টেক্সট লিখো (শেষ করতে এন্টার দুইবার চাপো):")
+    lines = []
+    while True:
+        line = input()
+        if line == "":
+            break
+        lines.append(line)
+    text = "\n".join(lines)
 
-def google_tts(text, language_code="bn-IN", voice_name="bn-IN-Chirp3-HD-Achernar", output="google.mp3"):
-    client = texttospeech.TextToSpeechClient()
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code=language_code,
-        name=voice_name
-    )
-    audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
-    response = client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
-    with open(output, "wb") as out:
-        out.write(response.audio_content)
-    print(f"Google Cloud → {output}")
+    if not text.strip():
+        print("কোনো টেক্সট দেওয়া হয়নি!")
+        return
 
-# ========== ব্যবহার ==========
-text = """এখানে তোমার লম্বা স্ক্রিপ্ট দাও।"""
+    # ভয়েস সিলেক্ট
+    print("\nউপলব্ধ ভয়েসসমূহ:")
+    for key, voice in VOICES.items():
+        print(f"{key}. {voice['name']}")
 
-# যেটা চাও সেটা আনকমেন্ট করো
-elevenlabs_tts(text)
-# google_tts(text)nsafe_allow_html=True)
+    choice = input("\nকোন ভয়েস চাও? (1-11): ").strip()
+    if choice not in VOICES:
+        print("ভুল সিলেকশন! ডিফল্ট ভয়েস ব্যবহার করা হচ্ছে...")
+        choice = "1"
+
+    selected_voice = VOICES[choice]["id"]
+    print(f"\nসিলেক্টেড ভয়েস: {VOICES[choice]['name']}")
+
+    # স্পিড
+    speed = input("স্পিড দাও (0.7 থেকে 1.3, ডিফল্ট 1.0): ").strip()
+    try:
+        speed = float(speed)
+        rate = f"{int((speed - 1) * 100):+d}%"
+    except:
+        rate = "+0%"
+
+    # আউটপুট ফাইল
+    output_file = input("ফাইলের নাম দাও (ডিফল্ট: output.mp3): ").strip()
+    if not output_file:
+        output_file = "output.mp3"
+    if not output_file.endswith(".mp3"):
+        output_file += ".mp3"
+
+    print("\nভয়েস তৈরি হচ্ছে... অপেক্ষা করো...")
+
+    communicate = edge_tts.Communicate(text, selected_voice, rate=rate)
+    await communicate.save(output_file)
+
+    print(f"\nসফল হয়েছে!")
+    print(f"ফাইল সেভ হয়েছে: {os.path.abspath(output_file)}")
+
+if __name__ == "__main__":
+    asyncio.run(generate_voice())
