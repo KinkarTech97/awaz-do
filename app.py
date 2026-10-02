@@ -1,39 +1,41 @@
-
 import streamlit as st
 import requests
 
-# ওয়েবসাইটের নাম এবং ডিজাইন সেটআপ
+# Page Setup
 st.set_page_config(page_title="Awaz Do - AI Voice Cloning", page_icon="🎙️", layout="centered")
 
+# Main Title and Subtitles in 3 Languages
 st.title("🎙️ Awaz Do - The Local AI Tool")
-st.markdown("আপনার নিজের ভয়েস ক্লোন করুন এবং টেক্সট থেকে অডিও (TTS) তৈরি করুন মাত্র কয়েক সেকেন্ডে!")
+st.markdown("**Clone your voice and generate audio from text in seconds!**")
+st.markdown("*(মাত্র কয়েক সেকেন্ডে আপনার নিজের ভয়েস ক্লোন করুন এবং টেক্সট থেকে অডিও তৈরি করুন!)*")
+st.markdown("*(कुछ ही सेकंड में अपनी आवाज़ क्लोन करें और टेक्स्ट से ऑडियो बनाएं!)*")
+st.markdown("---")
 
-# সাইডবারে API Key দেওয়ার জায়গা
-st.sidebar.header("🔑 API Key সেটআপ")
-api_key = st.sidebar.text_input("ElevenLabs API Key দিন:", type="password")
-st.sidebar.markdown("*[ElevenLabs.io থেকে আপনার API Key সংগ্রহ করুন]*")
-st.sidebar.markdown("---")
-st.sidebar.info("ভয়েস ক্লোনিং ফিচারটি ব্যবহার করতে ElevenLabs-এর API Key থাকা বাধ্যতামূলক।")
+# Sidebar for API Key
+st.sidebar.header("🔑 API Setup (সেটআপ / सेटअप)")
+api_key = st.sidebar.text_input("Enter ElevenLabs API Key \n(এখানে API Key দিন / यहाँ API Key दर्ज करें):", type="password")
+st.sidebar.markdown("*[Get free API Key from ElevenLabs.io]*")
+st.sidebar.info("API Key is required to use this tool. \n(এই টুলটি ব্যবহার করতে API Key প্রয়োজন। / इस टूल के उपयोग के लिए API Key आवश्यक है।)")
 
-# দুটো আলাদা অপশন (Tab) তৈরি করা
-tab1, tab2 = st.tabs(["🗣️ নতুন ভয়েস ক্লোন করুন", "🔊 টেক্সট থেকে অডিও (TTS)"])
+# Tabs for features
+tab1, tab2 = st.tabs(["🗣️ Clone Voice (ভয়েস ক্লোন / वॉयस क्लोन)", "🔊 Text to Audio (অডিও তৈরি / ऑडियो बनाएं)"])
 
-# ----------------- Tab 1: ভয়েস ক্লোনিং -----------------
+# ----------------- Tab 1: Voice Cloning -----------------
 with tab1:
-    st.header("আপনার ভয়েস আপলোড করুন")
-    st.write("যেকোনো মানুষের পরিষ্কার ১-৫ মিনিটের অডিও আপলোড করে তার ডিজিটাল ভয়েস তৈরি করুন।")
+    st.header("Upload Your Voice (আপনার ভয়েস আপলোড করুন / अपनी आवाज़ अपलोड करें)")
+    st.write("Upload a 1-5 minute clear audio clip. (১-৫ মিনিটের পরিষ্কার অডিও আপলোড করুন। / 1-5 मिनट का स्पष्ट ऑडियो अपलोड करें।)")
     
-    voice_name = st.text_input("ভয়েসের একটি নাম দিন (যেমন: Kinkar's Voice):")
-    voice_desc = st.text_input("ভয়েসের বিবরণ (ঐচ্ছিক):")
-    uploaded_files = st.file_uploader("অডিও ফাইল আপলোড করুন (mp3/wav/m4a):", type=['mp3', 'wav', 'm4a'], accept_multiple_files=True)
+    voice_name = st.text_input("Voice Name (ভয়েসের নাম দিন / आवाज़ का नाम दें):", placeholder="e.g., My AI Voice")
+    voice_desc = st.text_input("Description (বিবরণ / विवरण - Optional):")
+    uploaded_files = st.file_uploader("Upload Audio (অডিও আপলোড / ऑडियो अपलोड - mp3/wav/m4a):", type=['mp3', 'wav', 'm4a'], accept_multiple_files=True)
     
-    if st.button("🚀 ভয়েস ক্লোন তৈরি করুন"):
+    if st.button("🚀 Create Voice Clone (ক্লোন তৈরি করুন / क्लोन बनाएं)"):
         if not api_key:
-            st.error("অনুগ্রহ করে বামপাশের সাইডবারে আপনার ElevenLabs API Key দিন!")
+            st.error("Please enter your API Key in the sidebar! (সাইডবারে API Key দিন! / कृपया साइडबार में API Key दर्ज करें!)")
         elif not voice_name or not uploaded_files:
-            st.error("ভয়েসের নাম এবং অন্তত একটি অডিও ফাইল প্রয়োজন!")
+            st.error("Name and audio file are required! (নাম এবং অডিও ফাইল প্রয়োজন! / नाम और ऑडियो फ़ाइल आवश्यक है!)")
         else:
-            with st.spinner("আপনার ভয়েস ক্লোন করা হচ্ছে... একটু অপেক্ষা করুন..."):
+            with st.spinner("Cloning voice... Please wait... (ভয়েস ক্লোন করা হচ্ছে... / आवाज़ क्लोन हो रही है...)"):
                 url = "https://api.elevenlabs.io/v1/voices/add"
                 headers = {"xi-api-key": api_key}
                 data = {"name": voice_name, "description": voice_desc}
@@ -42,21 +44,20 @@ with tab1:
                 try:
                     response = requests.post(url, headers=headers, data=data, files=files)
                     if response.status_code == 200:
-                        st.success(f"🎉 অভিনন্দন! '{voice_name}' সফলভাবে ক্লোন হয়েছে। এবার 'টেক্সট থেকে অডিও' ট্যাবে গিয়ে এটি ব্যবহার করুন।")
+                        st.success(f"🎉 Success! '{voice_name}' is ready. (সফলভাবে তৈরি হয়েছে! / सफलतापूर्वक तैयार है!)")
                     else:
-                        st.error(f"❌ কোনো সমস্যা হয়েছে: {response.text}")
+                        st.error(f"❌ Error: {response.text}")
                 except Exception as e:
-                    st.error(f"❌ এরর: {e}")
+                    st.error(f"❌ Error: {e}")
 
-# ----------------- Tab 2: টেক্সট থেকে অডিও (TTS) -----------------
+# ----------------- Tab 2: Text to Speech (TTS) -----------------
 with tab2:
-    st.header("টেক্সট থেকে অডিও তৈরি করুন")
-    st.write("আপনার ক্লোন করা ভয়েস বা ডিফল্ট ভয়েস বেছে নিয়ে বাংলা বা ইংরেজিতে অডিও তৈরি করুন।")
+    st.header("Generate Audio (অডিও তৈরি করুন / ऑडियो उत्पन्न करें)")
+    st.write("Type in English, Bengali, or Hindi. (ইংরেজি, বাংলা বা হিন্দিতে টেক্সট লিখুন। / अंग्रेजी, बंगाली या हिंदी में टाइप करें।)")
     
     if not api_key:
-        st.warning("ভয়েস লিস্ট দেখতে বামপাশের সাইডবারে API Key দিন।")
+        st.warning("Enter API Key to load voices. (ভয়েস দেখতে API Key দিন। / आवाज़ें देखने के लिए API Key दर्ज करें।)")
     else:
-        # ElevenLabs থেকে সব ভয়েস লোড করা
         url = "https://api.elevenlabs.io/v1/voices"
         headers = {"xi-api-key": api_key}
         
@@ -67,33 +68,33 @@ with tab2:
                 voice_dict = {v["name"]: v["voice_id"] for v in voices}
                 
                 if voice_dict:
-                    selected_voice_name = st.selectbox("তালিকা থেকে একটি ভয়েস বেছে নিন:", list(voice_dict.keys()))
+                    selected_voice_name = st.selectbox("Select a Voice (ভয়েস বেছে নিন / आवाज़ चुनें):", list(voice_dict.keys()))
                     selected_voice_id = voice_dict[selected_voice_name]
                     
-                    text_input = st.text_area("এখানে আপনার টেক্সট লিখুন (বাংলা, হিন্দি বা ইংরেজি):", height=150, placeholder="আমি বাংলায় কথা বলতে পারি...")
+                    text_input = st.text_area("Enter Text (আপনার টেক্সট লিখুন / अपना टेक्स्ट यहाँ लिखें):", height=150, placeholder="Type your text here...")
                     
-                    if st.button("🎵 অডিও জেনারেট করুন"):
+                    if st.button("🎵 Generate Audio (অডিও জেনারেট করুন / ऑडियो बनाएं)"):
                         if text_input:
-                            with st.spinner("অডিও তৈরি হচ্ছে..."):
+                            with st.spinner("Generating... (তৈরি হচ্ছে... / उत्पन्न हो रहा है...)"):
                                 tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}"
                                 tts_data = {
                                     "text": text_input,
-                                    "model_id": "eleven_multilingual_v2", # বাংলা সাপোর্টের জন্য multilingual মডেল
+                                    "model_id": "eleven_multilingual_v2",
                                     "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
                                 }
                                 tts_response = requests.post(tts_url, json=tts_data, headers=headers)
                                 
                                 if tts_response.status_code == 200:
                                     st.audio(tts_response.content, format="audio/mp3")
-                                    st.success("✅ আপনার অডিও তৈরি হয়ে গেছে! উপরের প্লেয়ার থেকে শুনুন বা থ্রি-ডটে ক্লিক করে ডাউনলোড করুন।")
+                                    st.success("✅ Ready! Play or download. (তৈরি! প্লে বা ডাউনলোড করুন। / तैयार है! प्ले या डाउनलोड करें।)")
                                 else:
-                                    st.error(f"❌ অডিও তৈরিতে সমস্যা হয়েছে: {tts_response.text}")
+                                    st.error(f"❌ Error: {tts_response.text}")
                         else:
-                            st.warning("অনুগ্রহ করে কিছু টেক্সট লিখুন!")
+                            st.warning("Please enter some text! (কিছু টেক্সট লিখুন! / कृपया कुछ टेक्स्ट लिखें!)")
                 else:
-                    st.info("কোনো ভয়েস পাওয়া যায়নি।")
+                    st.info("No voices found.")
             else:
-                st.error("ভয়েস লিস্ট লোড করতে সমস্যা হচ্ছে। API Key সঠিক আছে কিনা চেক করুন।")
+                st.error("Error loading voices. Check your API Key.")
         except Exception as e:
-            st.error(f"❌ এরর: {e}")
-                  
+            st.error(f"❌ Error: {e}")
+            
