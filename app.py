@@ -2,201 +2,90 @@ import streamlit as st
 import asyncio
 import edge_tts
 import os
-import re
-import html
-import hashlib
-from pathlib import Path
 
-# =========================================================
-# AWAZ DO — NATURAL VOICE STUDIO
-# =========================================================
+# Page Setup
+st.set_page_config(page_title="Awaz Do — Voice Studio", page_icon="🎙️", layout="wide")
 
-st.set_page_config(
-    page_title="Awaz Do — Natural Voice Studio",
-    page_icon="🎙️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# =========================================================
-# CSS
-# =========================================================
-
+# Custom Design
 st.markdown("""
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-.stApp {
-    background:
-        radial-gradient(circle at 10% 10%, rgba(99,102,241,.10), transparent 28%),
-        radial-gradient(circle at 90% 20%, rgba(14,165,233,.08), transparent 28%),
-        #f8fafc;
-}
-.block-container { max-width: 1250px; padding-top: 2rem; }
-.hero { padding: 32px 10px 20px 10px; }
-.logo { font-size: 30px; font-weight: 800; color: #0f172a; }
-.logo span { color: #6366f1; }
-.badge {
-    display: inline-block; padding: 7px 13px; border-radius: 999px;
-    background: #eef2ff; color: #4f46e5; font-size: 13px; font-weight: 700; margin-bottom: 15px;
-}
-.hero-title { font-size: clamp(36px, 5vw, 64px); line-height: 1.05; font-weight: 850; letter-spacing: -2px; color: #0f172a; }
-.hero-title span { background: linear-gradient(90deg,#4f46e5,#0891b2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.card { background: rgba(255,255,255,.92); border: 1px solid #e2e8f0; border-radius: 24px; padding: 24px; box-shadow: 0 15px 45px rgba(15,23,42,.07); }
-</style>
+    <style>
+    .main-title { font-size: 2.2rem; font-weight: 800; color: #1e293b; }
+    .sub-title { font-size: 1rem; color: #64748b; margin-bottom: 25px; }
+    </style>
 """, unsafe_allow_html=True)
 
-# =========================================================
-# REAL WORKING VOICES ONLY (No Fake Names)
-# =========================================================
+# Header
+st.markdown("<div class='main-title'>🎙️ Awaz Do — AI Voice Studio</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'>যেকোনো ভাষার ভয়েস বেছে নিয়ে এক্সপেরিমেন্ট করুন।</div>", unsafe_allow_html=True)
 
-VOICES = {
-    "Bengali (India)": {
-        "👨 Bashkar — Deep & Heavy Male": "bn-IN-BashkarNeural",
-        "👩 Tanishaa — Soft Natural Female": "bn-IN-TanishaaNeural"
-    },
-    "Hindi (India)": {
-        "👨 Madhur — Cinematic Rich Male": "hi-IN-MadhurNeural",
-        "👩 Swara — Expressive Female": "hi-IN-SwaraNeural"
-    },
-    "English (US)": {
-        "👨 Andrew — Warm Cinematic Male": "en-US-AndrewNeural",
-        "👩 Jenny — Natural Storytelling Female": "en-US-JennyNeural"
-    }
+# ALL Voices Unlocked in a Single Menu
+ALL_VOICES = {
+    "👨 ভাস্কর (Bengali - Deep Male)": "bn-IN-BashkarNeural",
+    "👩 তানিশা (Bengali - Soft Female)": "bn-IN-TanishaaNeural",
+    "👨 প্রদীপ (Bengali BD - Clear Male)": "bn-BD-PradeepNeural",
+    "👩 নবনীতা (Bengali BD - Natural Female)": "bn-BD-NabanitaNeural",
+    "👨 मधुर / Madhur (Hindi - Rich Male)": "hi-IN-MadhurNeural",
+    "👩 स्वरा / Swara (Hindi - Expressive Female)": "hi-IN-SwaraNeural",
+    "👨 Andrew (English US - Cinematic Male)": "en-US-AndrewNeural",
+    "👩 Jenny (English US - Storytelling Female)": "en-US-JennyNeural",
 }
 
-# =========================================================
-# STORY PRESETS (Analyzed from your audio)
-# =========================================================
-
-PRESETS = {
-    "🎬 Documentary (Banty Style)": {
-        "rate": "-14%",
-        "pitch": "-5Hz",
-        "volume": "+0%",
-        "sentence_pause": 550,
-        "paragraph_pause": 1200
-    },
-    "🎙️ Natural Conversation": {
-        "rate": "-2%",
-        "pitch": "0Hz",
-        "volume": "+0%",
-        "sentence_pause": 300,
-        "paragraph_pause": 650
-    },
-    "🌙 Deep Suspense Story": {
-        "rate": "-18%",
-        "pitch": "-7Hz",
-        "volume": "+0%",
-        "sentence_pause": 700,
-        "paragraph_pause": 1500
-    }
+# Style Presets
+STYLE_PRESETS = {
+    "🎬 Documentary (গম্ভীর ও ধীর)": {"rate": "-14%", "pitch": "-4Hz"},
+    "🎙️ Normal (স্বাভাবিক)": {"rate": "+0%", "pitch": "+0Hz"},
+    "🌙 Suspense (রহস্য)": {"rate": "-18%", "pitch": "-6Hz"}
 }
 
-# =========================================================
-# TEXT PROCESSING
-# =========================================================
-
-def prepare_story_text(text, sentence_pause, paragraph_pause):
-    text = text.replace("\r\n", "\n")
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text).strip()
-    
-    paragraphs = re.split(r"\n\s*\n", text)
-    processed_paragraphs = []
-    
-    for paragraph in paragraphs:
-        paragraph = html.escape(paragraph)
-        paragraph = re.sub(r"([।!?])", rf"\1<break time='{sentence_pause}ms'/>", paragraph)
-        paragraph = re.sub(r"([,،])", r"\1<break time='200ms'/>", paragraph)
-        paragraph = re.sub(r"(\.\.\.)", r"\1<break time='400ms'/>", paragraph)
-        processed_paragraphs.append(paragraph)
-
-    return (
-        f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='bn-IN'>"
-        f"<prosody>" + f"<break time='{paragraph_pause}ms'/>".join(processed_paragraphs) + "</prosody></speak>"
+# Main Workspace
+with st.container():
+    st.markdown("### 📝 আপনার স্ক্রিপ্ট লিখুন")
+    user_text = st.text_area(
+        label="Script Input",
+        height=180,
+        placeholder="বাংলা বা ইংরেজি অক্ষরে (Benglish) স্ক্রিপ্ট লিখুন...\n(বিঃদ্রঃ ইংরেজি/হিন্দি ভয়েস দিয়ে বাংলা বলাতে চাইলে 'Ami bhalo achi' স্টাইলে লিখুন)",
+        label_visibility="collapsed"
     )
 
-async def generate_audio(text, voice, output_file, preset):
-    communicate = edge_tts.Communicate(
-        text, voice, rate=preset["rate"], volume=preset["volume"], pitch=preset["pitch"]
+    col1, col2 = st.columns(2)
+    with col1:
+        chosen_voice_name = st.selectbox("🎙️ যেকোনো ভয়েস বেছে নিন (Cross-lingual test)", list(ALL_VOICES.keys()))
+        selected_voice_code = ALL_VOICES[chosen_voice_name]
+    with col2:
+        chosen_style = st.selectbox("🎭 বাচনভঙ্গি", list(STYLE_PRESETS.keys()))
+
+    generate_button = st.button("🎧 অডিও তৈরি করুন", type="primary", use_container_width=True)
+
+# TTS Generation Function
+async def render_audio(script_content, voice_id, preset, file_path):
+    tts_engine = edge_tts.Communicate(
+        text=script_content,
+        voice=voice_id,
+        rate=preset["rate"],
+        pitch=preset["pitch"]
     )
-    await communicate.save(output_file)
+    await tts_engine.save(file_path)
 
-# =========================================================
-# UI
-# =========================================================
-
-st.markdown('<div class="hero"><div class="logo">🎙️ <span>Awaz Do</span></div><br><div class="badge">AI NATURAL VOICE STUDIO</div><div class="hero-title">Turn Your Words Into<br><span>Natural Human-Like Voice.</span></div></div>', unsafe_allow_html=True)
-
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.markdown("### 📝 আপনার Script লিখুন")
-
-text_input = st.text_area(
-    "Script",
-    height=250,
-    label_visibility="collapsed",
-    placeholder="এখানে আপনার টেক্সট লিখুন...",
-    value="চক্রতীর্থের গল্পের আরও একটি গুরুত্বপূর্ণ অধ্যায় রয়েছে...\nএই স্থানটি দীর্ঘদিন ধরেই পরিচিত তার প্রাচীন মহাশ্মশানের জন্য।\n\nনীরব পরিবেশে শেষ বিদায়ের সেই মুহূর্ত... চক্রতীর্থের বর্তমান জীবনেরও একটি গুরুত্বপূর্ণ অংশ।"
-)
-
-c1, c2, c3 = st.columns(3)
-with c1:
-    language = st.selectbox("🌍 Language", list(VOICES.keys()))
-with c2:
-    voice_name = st.selectbox("🎙️ Voice", list(VOICES[language].keys()))
-with c3:
-    preset_name = st.selectbox("🎭 Speaking Style", list(PRESETS.keys()))
-
-with st.expander("⚙️ Advanced Voice Controls (Manual Fine-tuning)"):
-    preset = PRESETS[preset_name]
-    a1, a2, a3 = st.columns(3)
-    with a1:
-        speed = st.slider("Speaking Speed", -30, 20, int(preset["rate"].replace("%", "").replace("+", "")))
-    with a2:
-        pitch = st.slider("Voice Pitch", -15, 10, int(preset["pitch"].replace("Hz", "").replace("+", "")))
-    with a3:
-        volume = st.slider("Volume", -10, 10, int(preset["volume"].replace("%", "").replace("+", "")))
-    
-    p1, p2 = st.columns(2)
-    with p1:
-        sentence_pause = st.slider("Sentence Pause (ms)", 100, 1500, int(preset["sentence_pause"]), 50)
-    with p2:
-        paragraph_pause = st.slider("Paragraph Pause (ms)", 300, 3000, int(preset["paragraph_pause"]), 50)
-
-generate = st.button("🎧 Generate Natural Voice", type="primary", use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-if generate:
-    if not text_input.strip():
-        st.warning("⚠️ আগে কিছু text লিখুন।")
+# Button Execution
+if generate_button:
+    if not user_text.strip():
+        st.warning("⚠️ অনুগ্রহ করে আগে কিছু টেক্সট লিখুন!")
     else:
-        selected_voice = VOICES[language][voice_name]
-        final_preset = {
-            "rate": f"{speed:+d}%", "pitch": f"{pitch:+d}Hz", "volume": f"{volume:+d}%",
-            "sentence_pause": sentence_pause, "paragraph_pause": paragraph_pause
-        }
-        
-        file_hash = hashlib.md5((text_input + selected_voice + str(final_preset)).encode("utf-8")).hexdigest()[:12]
-        output_dir = Path("generated_audio")
-        output_dir.mkdir(exist_ok=True)
-        output_file = output_dir / f"awaz_do_{file_hash}.mp3"
-
-        with st.status("🎙️ Creating emotional voice...", expanded=True) as status:
+        with st.status("🎙️ ভয়েস জেনারেট হচ্ছে...", expanded=True) as status_box:
             try:
-                # The fake text-formatting trick for Edge-TTS
-                script_to_process = text_input.replace(",", "...").replace(";", "...")
-                asyncio.run(generate_audio(script_to_process, selected_voice, str(output_file), final_preset))
-                status.update(label="✅ Voice generated successfully!", state="complete")
-            except Exception as e:
-                status.update(label="❌ Generation failed", state="error")
-                st.error(str(e))
-                st.stop()
+                formatted_script = user_text.replace(",", "...").replace(";", "...")
+                output_filename = "awaz_output.mp3"
+                preset_values = STYLE_PRESETS[chosen_style]
 
-        st.markdown('<br><div class="card">### 🎧 Your Generated Voice', unsafe_allow_html=True)
-        st.audio(str(output_file), format="audio/mp3")
-        with open(output_file, "rb") as audio_file:
-            st.download_button("📥 Download MP3", data=audio_file, file_name="documentary_voice.mp3", mime="audio/mpeg", use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
+                asyncio.run(render_audio(formatted_script, selected_voice_code, preset_values, output_filename))
+
+                status_box.update(label="✅ অডিও তৈরি সম্পন্ন হয়েছে!", state="complete")
+                
+                st.audio(output_filename, format="audio/mp3")
+                with open(output_filename, "rb") as audio_data:
+                    st.download_button("📥 ডাউনলোড করুন (MP3)", data=audio_data, file_name="awaz_do_voice.mp3", mime="audio/mpeg")
+
+            except Exception as error_msg:
+                status_box.update(label="❌ কোনো সমস্যা হয়েছে", state="error")
+                st.error(f"Error: হতে পারে আপনি ইংরেজি ভয়েস দিয়ে সরাসরি বাংলা ফন্ট (অ,আ) পড়ানোর চেষ্টা করছেন। ইংরেজি ভয়েসের জন্য ইংরেজি অক্ষরে (Benglish) লিখুন।\n\nDetails: {error_msg}")
+                
