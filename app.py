@@ -2,99 +2,63 @@ import streamlit as st
 import requests
 
 # Page Setup
-st.set_page_config(page_title="Awaz Do - AI Voice Cloning", page_icon="🎙️", layout="centered")
+st.set_page_config(page_title="Awaz Do - AI Voice Hub", page_icon="🎙️", layout="centered")
 
-# Main Title and Subtitles in 3 Languages
-st.title("🎙️ Awaz Do - The Local AI Tool")
-st.markdown("**Clone your voice and generate audio from text in seconds!**")
-st.markdown("*(মাত্র কয়েক সেকেন্ডে আপনার নিজের ভয়েস ক্লোন করুন এবং টেক্সট থেকে অডিও তৈরি করুন!)*")
-st.markdown("*(कुछ ही सेकंड में अपनी आवाज़ क्लोन करें और टेक्स्ट से ऑडियो बनाएं!)*")
+st.title("🎙️ Awaz Do - The Local AI Hub")
+st.markdown("**সম্পূর্ণ ফ্রিতে আপনার টেক্সট থেকে অডিও তৈরি করুন!**")
 st.markdown("---")
 
-# Sidebar for API Key
-st.sidebar.header("🔑 API Setup (সেটআপ / सेटअप)")
-api_key = st.sidebar.text_input("Enter ElevenLabs API Key \n(এখানে API Key দিন / यहाँ API Key दर्ज करें):", type="password")
-st.sidebar.markdown("*[Get free API Key from ElevenLabs.io]*")
-st.sidebar.info("API Key is required to use this tool. \n(এই টুলটি ব্যবহার করতে API Key প্রয়োজন। / इस टूल के उपयोग के लिए API Key आवश्यक है।)")
+# এখানে তোর কপি করা টোকেনটা বসাবি (ইনভার্টেড কমার ভেতরে)
+HF_API_KEY = "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" 
 
-# Tabs for features
-tab1, tab2 = st.tabs(["🗣️ Clone Voice (ভয়েস ক্লোন / वॉयस क्लोन)", "🔊 Text to Audio (অডিও তৈরি / ऑडियो बनाएं)"])
+# ভাষা এবং মডেল সিলেক্ট করার অপশন
+st.header("১. ভাষা বেছে নিন")
+models = {
+    "বাংলা (Bengali)": "facebook/mms-tts-ben",
+    "হিন্দি (Hindi)": "facebook/mms-tts-hin",
+    "ইংরেজি (English)": "facebook/mms-tts-eng"
+}
+selected_lang = st.selectbox("কোন ভাষায় অডিও বানাতে চান?", list(models.keys()))
+model_id = models[selected_lang]
 
-# ----------------- Tab 1: Voice Cloning -----------------
-with tab1:
-    st.header("Upload Your Voice (আপনার ভয়েস আপলোড করুন / अपनी आवाज़ अपलोड करें)")
-    st.write("Upload a 1-5 minute clear audio clip. (১-৫ মিনিটের পরিষ্কার অডিও আপলোড করুন। / 1-5 मिनट का स्पष्ट ऑडियो अपलोड करें।)")
-    
-    voice_name = st.text_input("Voice Name (ভয়েসের নাম দিন / आवाज़ का नाम दें):", placeholder="e.g., My AI Voice")
-    voice_desc = st.text_input("Description (বিবরণ / विवरण - Optional):")
-    uploaded_files = st.file_uploader("Upload Audio (অডিও আপলোড / ऑडियो अपलोड - mp3/wav/m4a):", type=['mp3', 'wav', 'm4a'], accept_multiple_files=True)
-    
-    if st.button("🚀 Create Voice Clone (ক্লোন তৈরি করুন / क्लोन बनाएं)"):
-        if not api_key:
-            st.error("Please enter your API Key in the sidebar! (সাইডবারে API Key দিন! / कृपया साइडबार में API Key दर्ज करें!)")
-        elif not voice_name or not uploaded_files:
-            st.error("Name and audio file are required! (নাম এবং অডিও ফাইল প্রয়োজন! / नाम और ऑडियो फ़ाइल आवश्यक है!)")
-        else:
-            with st.spinner("Cloning voice... Please wait... (ভয়েস ক্লোন করা হচ্ছে... / आवाज़ क्लोन हो रही है...)"):
-                url = "https://api.elevenlabs.io/v1/voices/add"
-                headers = {"xi-api-key": api_key}
-                data = {"name": voice_name, "description": voice_desc}
-                files = [("files", (file.name, file.getvalue(), file.type)) for file in uploaded_files]
-                
-                try:
-                    response = requests.post(url, headers=headers, data=data, files=files)
-                    if response.status_code == 200:
-                        st.success(f"🎉 Success! '{voice_name}' is ready. (সফলভাবে তৈরি হয়েছে! / सफलतापूर्वक तैयार है!)")
-                    else:
-                        st.error(f"❌ Error: {response.text}")
-                except Exception as e:
-                    st.error(f"❌ Error: {e}")
+# Hugging Face API URL
+API_URL = f"https://api-inference.huggingface.co/models/{model_id}"
+headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 
-# ----------------- Tab 2: Text to Speech (TTS) -----------------
-with tab2:
-    st.header("Generate Audio (অডিও তৈরি করুন / ऑडियो उत्पन्न करें)")
-    st.write("Type in English, Bengali, or Hindi. (ইংরেজি, বাংলা বা হিন্দিতে টেক্সট লিখুন। / अंग्रेजी, बंगाली या हिंदी में टाइप करें।)")
-    
-    if not api_key:
-        st.warning("Enter API Key to load voices. (ভয়েস দেখতে API Key দিন। / आवाज़ें देखने के लिए API Key दर्ज करें।)")
+st.markdown("---")
+st.header("২. আপনার টেক্সট লিখুন")
+text_input = st.text_area(
+    "এখানে আপনার স্ক্রিপ্ট লিখুন:", 
+    height=150, 
+    placeholder="যেমন: মনের কিনারে বা বাংলার গল্পের নতুন ভিডিওর ভয়েসওভার..."
+)
+
+st.markdown("---")
+if st.button("🎵 অডিও তৈরি করুন (Generate Audio)"):
+    if HF_API_KEY == "এখানে_তোর_টোকেন_পেস্ট_করবি":
+        st.error("⚠️ এডমিন নোটিশ: দয়া করে কোডের ভেতরে আপনার Hugging Face টোকেনটি বসান!")
+    elif not text_input:
+        st.warning("অনুগ্রহ করে টেক্সট বক্সে কিছু লিখুন!")
     else:
-        url = "https://api.elevenlabs.io/v1/voices"
-        headers = {"xi-api-key": api_key}
-        
-        try:
-            response = requests.get(url, headers=headers)
-            if response.status_code == 200:
-                voices = response.json().get("voices", [])
-                voice_dict = {v["name"]: v["voice_id"] for v in voices}
+        with st.spinner("অডিও তৈরি হচ্ছে... একটু অপেক্ষা করুন..."):
+            try:
+                # Hugging Face-এ রিকোয়েস্ট পাঠানো
+                response = requests.post(API_URL, headers=headers, json={"inputs": text_input})
                 
-                if voice_dict:
-                    selected_voice_name = st.selectbox("Select a Voice (ভয়েস বেছে নিন / आवाज़ चुनें):", list(voice_dict.keys()))
-                    selected_voice_id = voice_dict[selected_voice_name]
+                if response.status_code == 200:
+                    st.success("🎉 আপনার অডিও সফলভাবে তৈরি হয়ে গেছে!")
+                    # অডিও প্লেয়ার
+                    st.audio(response.content, format="audio/flac")
                     
-                    text_input = st.text_area("Enter Text (আপনার টেক্সট লিখুন / अपना टेक्स्ट यहाँ लिखें):", height=150, placeholder="Type your text here...")
-                    
-                    if st.button("🎵 Generate Audio (অডিও জেনারেট করুন / ऑडियो बनाएं)"):
-                        if text_input:
-                            with st.spinner("Generating... (তৈরি হচ্ছে... / उत्पन्न हो रहा है...)"):
-                                tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{selected_voice_id}"
-                                tts_data = {
-                                    "text": text_input,
-                                    "model_id": "eleven_multilingual_v2",
-                                    "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
-                                }
-                                tts_response = requests.post(tts_url, json=tts_data, headers=headers)
-                                
-                                if tts_response.status_code == 200:
-                                    st.audio(tts_response.content, format="audio/mp3")
-                                    st.success("✅ Ready! Play or download. (তৈরি! প্লে বা ডাউনলোড করুন। / तैयार है! प्ले या डाउनलोड करें।)")
-                                else:
-                                    st.error(f"❌ Error: {tts_response.text}")
-                        else:
-                            st.warning("Please enter some text! (কিছু টেক্সট লিখুন! / कृपया कुछ टेक्स्ट लिखें!)")
+                    # ডাউনলোড বাটন
+                    st.download_button(
+                        label="📥 অডিও ডাউনলোড করুন",
+                        data=response.content,
+                        file_name="awaz_do_audio.flac",
+                        mime="audio/flac"
+                    )
                 else:
-                    st.info("No voices found.")
-            else:
-                st.error("Error loading voices. Check your API Key.")
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
-            
+                    st.error(f"❌ অডিও তৈরিতে সমস্যা হয়েছে। সার্ভার হয়তো ব্যস্ত আছে, একটু পরে আবার চেষ্টা করুন।")
+            except Exception as e:
+                st.error(f"❌ এরর: {e}")
+                
